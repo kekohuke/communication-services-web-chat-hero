@@ -1,5 +1,5 @@
 import { ChatMessage } from '@azure/communication-chat';
-import { CommunicationIdentifier, isCommunicationUserIdentifier, isMicrosoftTeamsUserIdentifier, isPhoneNumberIdentifier, MicrosoftTeamsUserIdentifier, MicrosoftTeamsUserKind } from '@azure/communication-common';
+import { CommunicationIdentifier, isCommunicationUserIdentifier, isMicrosoftTeamsUserIdentifier, isPhoneNumberIdentifier, MicrosoftTeamsUserIdentifier } from '@azure/communication-common';
 import preval from 'preval.macro';
 import { ClientChatMessage } from '../core/reducers/MessagesReducer';
 

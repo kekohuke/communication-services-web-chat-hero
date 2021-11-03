@@ -5,8 +5,7 @@ import {
   MINIMUM_TYPING_INTERVAL_IN_MILLISECONDS,
   MAXIMUM_INT64,
   PAGE_SIZE,
-  INITIAL_MESSAGES_SIZE,
-  OK
+  INITIAL_MESSAGES_SIZE
 } from '../constants';
 import { setChatClient, setContosoUser, setContosoUsers } from './actions/ContosoClientAction';
 import { setReceipts } from './actions/ConversationsAction';
@@ -36,8 +35,6 @@ import {
   CommunicationIdentifier,
   CommunicationTokenRefreshOptions,
   CommunicationUserIdentifier,
-  isCommunicationUserIdentifier,
-  isMicrosoftTeamsUserIdentifier,
   MicrosoftTeamsUserIdentifier,
   MicrosoftTeamsUserKind
 } from '@azure/communication-common';
@@ -481,7 +478,6 @@ const getThreadInformation = async (chatClient: ChatClient, dispatch: Dispatch, 
 
   let chatThreadClient;
   let iteratableParticipants;
-  let topic;
 
   try {
     chatThreadClient = chatClient.getChatThreadClient(threadId);
@@ -508,11 +504,6 @@ const getThreadInformation = async (chatClient: ChatClient, dispatch: Dispatch, 
     console.error('unable to get members in the thread');
     return;
   }
-
-  // remove undefined display name chat participants
-  const validChatParticipants = chatParticipants.filter(
-    (chatParticipant) => !(isCommunicationUserIdentifier(chatParticipant.id) && chatParticipant.displayName === undefined)
-  );
 
   // get the emojis for the new participants
   let users = state.contosoClient.users;

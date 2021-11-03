@@ -112,7 +112,7 @@ export default (props: ChatThreadProps): JSX.Element => {
 
   useEffect(() => {
     updateIndexOfTheFirstMessage();
-  }, [numberOfMessagesToRender]);
+  }, [numberOfMessagesToRender, updateIndexOfTheFirstMessage]);
 
   useEffect(() => {
     // get the sender of the most recent message
@@ -134,21 +134,21 @@ export default (props: ChatThreadProps): JSX.Element => {
       window.removeEventListener('focus', sendReadReceipt);
       createdRef.current.removeEventListener('scroll', handleScroll);
     };
-  }, [props.messages]);
+  }, [handleScroll, isAtBottomOfScroll, props.messages, props.user.identity, sendReadReceipt, updateIndexOfTheFirstMessage]);
 
   useEffect(() => {
     if (shouldUpdateMessageWithAttached) {
       updateMessageWithAttached();
     }
     setShouldUpdateMessageWithAttached(false);
-  }, [shouldUpdateMessageWithAttached]);
+  }, [shouldUpdateMessageWithAttached, updateMessageWithAttached]);
 
   // auto scroll to the latest message when we are at bottom of the scroll
   useEffect(() => {
     if (isAtBottomOfScroll) {
       scrollToBottom();
     }
-  }, [messagesWithAttached]);
+  }, [isAtBottomOfScroll, messagesWithAttached]);
 
   const loadMoreMessages = () => {
     updateIndexOfTheFirstMessageToLoadMore();
@@ -226,14 +226,14 @@ export default (props: ChatThreadProps): JSX.Element => {
     setShouldUpdateMessageWithAttached(true);
   };
 
-  const updateIndexOfTheFirstMessage = () => {
+  const updateIndexOfTheFirstMessage = useCallback(() => {
     setIndexOfTheFirstMessage(
       props.messages.length > numberOfMessagesToRenderRef.current
         ? props.messages.length - numberOfMessagesToRenderRef.current
         : 0
     );
     setShouldUpdateMessageWithAttached(true);
-  };
+  });
 
   const updateMessageWithAttached = () => {
     let newMessagesWithAttached: any[] = [];

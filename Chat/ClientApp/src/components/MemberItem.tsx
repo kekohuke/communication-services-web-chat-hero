@@ -1,4 +1,3 @@
-import { CommunicationIdentifier } from '@azure/communication-common';
 import { IconButton } from '@fluentui/react';
 import React from 'react';
 
