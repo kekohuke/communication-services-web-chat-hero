@@ -9,7 +9,7 @@ import {
   PresenceStrokeIcon,
   RedbangIcon
 } from '@fluentui/react-northstar';
-import React, { useEffect, useState, createRef, useRef } from 'react';
+import React, { useEffect, useState, createRef, useRef, useCallback } from 'react';
 import { LiveAnnouncer, LiveMessage } from 'react-aria-live';
 
 import { URL_REGEX, NUMBER_OF_MESSAGES_TO_LOAD } from '../constants';
@@ -106,6 +106,114 @@ export default (props: ChatThreadProps): JSX.Element => {
     setNumberOfMessagesToRender(numberOfMessagesToRenderValue);
   };
 
+  const sendReadReceipt = () => {
+    props.sendReadReceipt(messagesWithAttachedRef.current, props.user.identity);
+  };
+
+  const updateMessageWithAttached = () => {
+    let newMessagesWithAttached: any[] = [];
+    let messagesToRender = props.messages.slice(indexOfTheFirstMessage, props.messages.length);
+    messagesToRender.map((message: any, index: number, messagesList: any) => {
+      let mine = message.sender.communicationUserId === props.user.identity;
+      let attached: string | boolean = false;
+      if (index === 0) {
+        if (index !== messagesList.length - 1) {
+          //the next message has the same sender
+          if (messagesList[index].sender.communicationUserId === messagesList[index + 1].sender.communicationUserId) {
+            attached = 'top';
+          }
+        }
+      } else {
+        if (messagesList[index].sender.communicationUserId === messagesList[index - 1].sender.communicationUserId) {
+          //the previous message has the same sender
+          if (index !== messagesList.length - 1) {
+            if (messagesList[index].sender.communicationUserId === messagesList[index + 1].sender.communicationUserId) {
+              //the next message has the same sender
+              attached = true;
+            } else {
+              //the next message has a different sender
+              attached = 'bottom';
+            }
+          } else {
+            // this is the last message of the whole messages list
+            attached = 'bottom';
+          }
+        } else {
+          //the previous message has a different sender
+          if (index !== messagesList.length - 1) {
+            if (messagesList[index].sender.communicationUserId === messagesList[index + 1].sender.communicationUserId) {
+              //the next message has the same sender
+              attached = 'top';
+            }
+          }
+        }
+      }
+      let messageWithAttached = { ...message, attached, mine };
+      newMessagesWithAttached.push(messageWithAttached);
+    });
+    setMessagesWithAttachedRef(newMessagesWithAttached);
+  };
+
+  const readReceiptIcon = (message: any) => {
+    // message is pending send or is failed to be sent
+    if (message.failed) {
+      let messageFailed: boolean =
+        props.failedMessages.find((failedMessage: string) => failedMessage === message.clientMessageId) !== undefined;
+      return messageFailed ? (
+        <TooltipHost content="failed to send">
+          <RedbangIcon size="medium" styles={{ color: 'red' }} />{' '}
+        </TooltipHost>
+      ) : (
+        <TooltipHost content="sending">
+          <PresenceStrokeIcon size="medium" />{' '}
+        </TooltipHost>
+      );
+    } else {
+      // show read receipt if it's not a large participant group
+      if (!props.isLargeParticipantsGroup()) {
+        let MessagesWithSeen = messagesWithAttached.map((messageWithAttached) => {
+          let isSeen = props.isMessageSeen(messageWithAttached.clientMessageId, messagesWithAttached);
+          return { ...messageWithAttached, isSeen };
+        });
+        if (props.isYourLatestSeenMessage(message.clientMessageId, MessagesWithSeen)) {
+          return (
+            <TooltipHost content="seen">
+              <MessageSeenIcon size="medium" />
+            </TooltipHost>
+          );
+        }
+      }
+      if (props.isYourLatestMessage(message.id, messagesWithAttached)) {
+        return (
+          <TooltipHost content="sent">
+            <PresenceAvailableIcon size="medium" />
+          </TooltipHost>
+        );
+      } else {
+        return <div className={noReadReceiptStyle}></div>;
+      }
+    }
+  };
+
+  const updateIndexOfTheFirstMessage = useCallback(() => {
+    setIndexOfTheFirstMessage(
+      props.messages.length > numberOfMessagesToRenderRef.current
+        ? props.messages.length - numberOfMessagesToRenderRef.current
+        : 0
+    );
+    setShouldUpdateMessageWithAttached(true);
+  }, []);
+
+  const handleScroll = () => {
+    let atBottom = createdRef.current.scrollTop >= createdRef.current.scrollHeight - createdRef.current.clientHeight;
+    let atTop = createdRef.current.scrollTop === 0;
+    if (atBottom && !isAtBottomOfScrollRef.current) {
+      loadNewMessages();
+    }
+    setIsAtBottomOfScrollRef(atBottom);
+    setIsAtTopOfScroll(atTop);
+  };
+
   useEffect(() => {
     setNumberOfMessagesToRenderRef(Math.ceil(chatThreadRef.current.clientHeight / 34)); //34 px is the minimum height of the chat bubble
   }, [chatThreadRef.current?.clientHeight]);
@@ -164,119 +272,11 @@ export default (props: ChatThreadProps): JSX.Element => {
     setExistsNewMessage(false);
   };
 
-  const sendReadReceipt = () => {
-    props.sendReadReceipt(messagesWithAttachedRef.current, props.user.identity);
-  };
-
-  const readReceiptIcon = (message: any) => {
-    // message is pending send or is failed to be sent
-    if (message.failed) {
-      let messageFailed: boolean =
-        props.failedMessages.find((failedMessage: string) => failedMessage === message.clientMessageId) !== undefined;
-      return messageFailed ? (
-        <TooltipHost content="failed to send">
-          <RedbangIcon size="medium" styles={{ color: 'red' }} />{' '}
-        </TooltipHost>
-      ) : (
-        <TooltipHost content="sending">
-          <PresenceStrokeIcon size="medium" />{' '}
-        </TooltipHost>
-      );
-    } else {
-      // show read receipt if it's not a large participant group
-      if (!props.isLargeParticipantsGroup()) {
-        let MessagesWithSeen = messagesWithAttached.map((messageWithAttached) => {
-          let isSeen = props.isMessageSeen(messageWithAttached.clientMessageId, messagesWithAttached);
-          return { ...messageWithAttached, isSeen };
-        });
-        if (props.isYourLatestSeenMessage(message.clientMessageId, MessagesWithSeen)) {
-          return (
-            <TooltipHost content="seen">
-              <MessageSeenIcon size="medium" />
-            </TooltipHost>
-          );
-        }
-      }
-      if (props.isYourLatestMessage(message.id, messagesWithAttached)) {
-        return (
-          <TooltipHost content="sent">
-            <PresenceAvailableIcon size="medium" />
-          </TooltipHost>
-        );
-      } else {
-        return <div className={noReadReceiptStyle}></div>;
-      }
-    }
-  };
-
-  const handleScroll = () => {
-    let atBottom = createdRef.current.scrollTop >= createdRef.current.scrollHeight - createdRef.current.clientHeight;
-    let atTop = createdRef.current.scrollTop === 0;
-    if (atBottom && !isAtBottomOfScrollRef.current) {
-      loadNewMessages();
-    }
-    setIsAtBottomOfScrollRef(atBottom);
-    setIsAtTopOfScroll(atTop);
-  };
-
   const updateIndexOfTheFirstMessageToLoadMore = () => {
     setIndexOfTheFirstMessage(
       indexOfTheFirstMessage > NUMBER_OF_MESSAGES_TO_LOAD ? indexOfTheFirstMessage - NUMBER_OF_MESSAGES_TO_LOAD : 0
     );
     setShouldUpdateMessageWithAttached(true);
-  };
-
-  const updateIndexOfTheFirstMessage = useCallback(() => {
-    setIndexOfTheFirstMessage(
-      props.messages.length > numberOfMessagesToRenderRef.current
-        ? props.messages.length - numberOfMessagesToRenderRef.current
-        : 0
-    );
-    setShouldUpdateMessageWithAttached(true);
-  });
-
-  const updateMessageWithAttached = () => {
-    let newMessagesWithAttached: any[] = [];
-    let messagesToRender = props.messages.slice(indexOfTheFirstMessage, props.messages.length);
-    messagesToRender.map((message: any, index: number, messagesList: any) => {
-      let mine = message.sender.communicationUserId === props.user.identity;
-      let attached: string | boolean = false;
-      if (index === 0) {
-        if (index !== messagesList.length - 1) {
-          //the next message has the same sender
-          if (messagesList[index].sender.communicationUserId === messagesList[index + 1].sender.communicationUserId) {
-            attached = 'top';
-          }
-        }
-      } else {
-        if (messagesList[index].sender.communicationUserId === messagesList[index - 1].sender.communicationUserId) {
-          //the previous message has the same sender
-          if (index !== messagesList.length - 1) {
-            if (messagesList[index].sender.communicationUserId === messagesList[index + 1].sender.communicationUserId) {
-              //the next message has the same sender
-              attached = true;
-            } else {
-              //the next message has a different sender
-              attached = 'bottom';
-            }
-          } else {
-            // this is the last message of the whole messages list
-            attached = 'bottom';
-          }
-        } else {
-          //the previous message has a different sender
-          if (index !== messagesList.length - 1) {
-            if (messagesList[index].sender.communicationUserId === messagesList[index + 1].sender.communicationUserId) {
-              //the next message has the same sender
-              attached = 'top';
-            }
-          }
-        }
-      }
-      let messageWithAttached = { ...message, attached, mine };
-      newMessagesWithAttached.push(messageWithAttached);
-    });
-    setMessagesWithAttachedRef(newMessagesWithAttached);
   };
 
   return (
